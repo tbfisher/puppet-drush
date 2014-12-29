@@ -1,5 +1,9 @@
 # Puppet Module: Drush
 
+## Requirements
+
+-   [tbfisher/puppet-php](https://github.com/tbfisher/puppet-php)
+
 ## Usage
 
 Install drush 5, 6, and 7. Link `drush` to 6.
