@@ -58,5 +58,23 @@ define drush (
       require => Exec["${bin} initial run"],
     }
   }
+}
+
+define drush::module (
+  $module,
+  $bin,
+) {
+
+  if ! defined(::Drush[$bin]) {
+    ::drush { $bin: }
+  }
+
+  $destination = "/usr/share/${bin}/commands"
+
+  exec { "${bin} dl ${module}":
+    command => "drush -y dl ${module} --destination=${destination}",
+    creates => "${destination}/${module}",
+    require => File["/usr/bin/${bin}"],
+  }
 
 }
