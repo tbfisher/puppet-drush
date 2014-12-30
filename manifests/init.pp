@@ -66,7 +66,7 @@ define drush::module (
 ) {
 
   if ! defined(::Drush[$bin]) {
-    ::drush { $bin: }
+    fail("missing ::drush{'${bin}'}")
   }
 
   $destination = "/usr/share/${bin}/commands"
