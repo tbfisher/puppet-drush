@@ -72,7 +72,7 @@ define drush::module (
   $destination = "/usr/share/${bin}/commands"
 
   exec { "${bin} dl ${module}":
-    command => "drush -y dl ${module} --destination=${destination}",
+    command => "${bin} -y dl ${module} --destination=${destination}",
     creates => "${destination}/${module}",
     require => File["/usr/bin/${bin}"],
   }
