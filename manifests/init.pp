@@ -2,10 +2,11 @@ define drush (
   $bin = $title,
   $revision = '6.x',
   $default = false,
+  $user = 'root',
+  $group = 'root',
+  $src_path = "/usr/local/src",
+  $bin_path = "/usr/local/bin",
 ) {
-
-  $lib_path = "/usr/share/${bin}"
-  $bin_path = "/usr/bin/${bin}"
 
   if ! defined(Package['git']) {
     package { 'git': }
@@ -16,46 +17,46 @@ define drush (
     }
   }
 
-  vcsrepo { $lib_path:
+  vcsrepo { "${src_path}/${bin}":
     ensure => $ensure,
     provider => git,
     source => 'https://github.com/drush-ops/drush.git',
     revision => $revision,
     require => Package['git'],
-  }
-
-  file { $bin_path:
-    ensure  => link,
-    target  => "${lib_path}/drush",
-  }
-
+    user => $user,
+    owner => $user,
+    group => $group,
+    notify => Exec["${bin} initial run"],
+  } ~>
   exec { "${bin} composer install":
     command => "composer install > composer.log",
     environment => 'COMPOSER_HOME=/root',
-    cwd => $lib_path,
-    onlyif => "test -f ${lib_path}/composer.json",
-    creates => "${lib_path}/vendor/autoload.php",
-    require => [
-      Vcsrepo[$lib_path],
-      ::Php::Composer['/usr/local/bin'],
-    ],
+    cwd => "${src_path}/${bin}",
+    onlyif => "test -f ${src_path}/${bin}/composer.json",
+    refreshonly => true,
+    user => $user,
+    require => ::Php::Composer['/usr/local/bin'],
+    notify => Exec["${bin} initial run"],
     timeout => 600,
   }
 
   exec { "${bin} initial run":
-    command => "${bin} cache-clear drush",
-    subscribe => [
-      File[$bin_path],
-      Exec["${bin} composer install"],
-    ],
+    command => "${src_path}/${bin}/drush cache-clear drush",
+    user => $user,
     refreshonly => true,
   }
 
+  file { "${bin_path}/${bin}":
+    ensure  => link,
+    target  => "${src_path}/${bin}/drush",
+    require => Vcsrepo["${src_path}/${bin}"],
+  }
+
   if $default {
-    file { '/usr/bin/drush':
+    file { "${bin_path}/drush":
       ensure  => link,
-      target  => "${lib_path}/drush",
-      require => Exec["${bin} initial run"],
+      target  => "${src_path}/${bin}/drush",
+      require => Vcsrepo["${src_path}/${bin}"],
     }
   }
 }
@@ -73,6 +74,7 @@ define drush::module (
 
   exec { "${bin} dl ${module}":
     command => "${bin} -y dl ${module} --destination=${destination}",
+    user => $user,
     creates => "${destination}/${module}",
     require => File["/usr/bin/${bin}"],
   }
