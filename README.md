@@ -18,3 +18,7 @@ Install modules that extend drush
       module => 'sql-sync-pipe',
       bin => 'drush5',
     }
+
+Get drush aliases defined on a remote system and writes them locally.
+
+    drush::remote_aliases { 'example.com': namespace => 'example' }
