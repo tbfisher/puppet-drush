@@ -70,13 +70,18 @@ define drush::module (
     fail("missing ::drush{'${bin}'}")
   }
 
-  $destination = "/usr/share/${bin}/commands"
+  $src_path = getparam(::Drush[$bin], 'src_path')
+  $bin_path = getparam(::Drush[$bin], 'bin_path')
+  $user = getparam(::Drush[$bin], 'user')
+
+  $destination = "${src_path}/${bin}/commands"
 
   exec { "${bin} dl ${module}":
     command => "${bin} -y dl ${module} --destination=${destination}",
     user => $user,
     creates => "${destination}/${module}",
-    require => File["/usr/bin/${bin}"],
+    notify => Exec["${bin} initial run"],
+    require => File["${bin_path}/${bin}"],
   }
 
 }
