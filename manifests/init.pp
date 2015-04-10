@@ -64,6 +64,7 @@ define drush (
 define drush::module (
   $module,
   $bin,
+  $version = false,
 ) {
 
   if ! defined(::Drush[$bin]) {
@@ -76,8 +77,15 @@ define drush::module (
 
   $destination = "${src_path}/${bin}/commands"
 
+  if $version {
+    $cmd = "${bin} -y dl ${module}-${version} --destination=${destination}"
+  }
+  else {
+    $cmd = "${bin} -y dl ${module} --destination=${destination}"
+  }
+
   exec { "${bin} dl ${module}":
-    command => "${bin} -y dl ${module} --destination=${destination}",
+    command => $cmd,
     user => $user,
     creates => "${destination}/${module}",
     notify => Exec["${bin} initial run"],
