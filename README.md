@@ -17,6 +17,7 @@ Install modules that extend drush
     drush::module { 'drush5 sql-sync-pipe':
       module => 'sql-sync-pipe',
       bin => 'drush5',
+      version => '7.x-1.x-dev',
     }
 
 Get drush aliases defined on a remote system and writes them locally.
