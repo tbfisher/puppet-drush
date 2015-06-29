@@ -1,62 +1,72 @@
-define drush (
-  $bin = $title,
-  $revision = '6.x',
-  $default = false,
-  $user = 'root',
-  $group = 'root',
+# base class
+class drush (
+  $user     = 'root',
+  $group    = 'root',
+  $home     = '/root',
   $src_path = "/usr/local/src",
   $bin_path = "/usr/local/bin",
+) {}
+
+# a drush installation
+define drush::bin (
+  $revision,
+  $default = false,
 ) {
 
-  if ! defined(Package['git']) {
-    package { 'git': }
-  }
-  if ! defined(::Php::Composer['/usr/local/bin']) {
-    ::php::composer { '/usr/local/bin':
-      bin => 'composer',
-    }
-  }
+  include drush
 
-  vcsrepo { "${src_path}/${bin}":
-    ensure => $ensure,
+  $src_path = "${::drush::src_path}/${title}"
+
+  vcsrepo { $src_path:
+    ensure   => $ensure,
     provider => git,
-    source => 'https://github.com/drush-ops/drush.git',
+    source   => 'https://github.com/drush-ops/drush.git',
     revision => $revision,
-    require => Package['git'],
-    user => $user,
-    owner => $user,
-    group => $group,
-    notify => Exec["${bin} initial run"],
+    require  => Package['git'],
+    user     => $::drush::user,
+    owner    => $::drush::user,
+    group    => $::drush::group,
+    notify   => Exec["drush::bin ${title} initial run"],
+  }
+
+  exec { "drush::bin ${title} install composer":
+    command     => 'curl -sS https://getcomposer.org/installer | php',
+    cwd         => "${src_path}",
+    user        => $::drush::user,
+    onlyif      => "test -f ${src_path}/composer.json",
+    refreshonly => true,
+    subscribe   => Vcsrepo[$src_path],
+    notify      => Exec["drush::bin ${title} initial run"],
   } ~>
-  exec { "${bin} composer install":
-    command => "composer install > composer.log",
-    environment => 'COMPOSER_HOME=/root',
-    cwd => "${src_path}/${bin}",
-    onlyif => "test -f ${src_path}/${bin}/composer.json",
+  exec { "drush::bin ${title} composer install":
+    command     => "${src_path}/composer.phar install",
+    environment => "COMPOSER_HOME=${::drush::home}",
+    cwd         => "${src_path}",
+    onlyif      => "test -f ${src_path}/composer.json",
     refreshonly => true,
-    user => $user,
-    require => ::Php::Composer['/usr/local/bin'],
-    notify => Exec["${bin} initial run"],
-    timeout => 600,
+    user        => $user,
+    timeout     => 600,
+    subscribe   => Vcsrepo[$src_path],
+    notify      => Exec["drush::bin ${title} initial run"],
   }
 
-  exec { "${bin} initial run":
-    command => "${src_path}/${bin}/drush cache-clear drush",
-    user => $user,
+  exec { "drush::bin ${title} initial run":
+    command     => "${src_path}/drush cache-clear drush",
+    user        => $user,
     refreshonly => true,
   }
 
-  file { "${bin_path}/${bin}":
+  file { "${::drush::bin_path}/${title}":
     ensure  => link,
-    target  => "${src_path}/${bin}/drush",
-    require => Vcsrepo["${src_path}/${bin}"],
+    target  => "${src_path}/drush",
+    require => Vcsrepo["${src_path}"],
   }
 
   if $default {
-    file { "${bin_path}/drush":
+    file { "${::drush::bin_path}/drush":
       ensure  => link,
-      target  => "${src_path}/${bin}/drush",
-      require => Vcsrepo["${src_path}/${bin}"],
+      target  => "${src_path}/drush",
+      require => Vcsrepo[$src_path],
     }
   }
 }
@@ -67,15 +77,9 @@ define drush::module (
   $version = false,
 ) {
 
-  if ! defined(::Drush[$bin]) {
-    fail("missing ::drush{'${bin}'}")
-  }
+  $src_path = "${::drush::src_path}/${bin}"
 
-  $src_path = getparam(::Drush[$bin], 'src_path')
-  $bin_path = getparam(::Drush[$bin], 'bin_path')
-  $user = getparam(::Drush[$bin], 'user')
-
-  $destination = "${src_path}/${bin}/commands"
+  $destination = "${src_path}/commands"
 
   if $version {
     $cmd = "${bin} -y dl ${module}-${version} --destination=${destination}"
@@ -86,10 +90,9 @@ define drush::module (
 
   exec { "${bin} dl ${module}":
     command => $cmd,
-    user => $user,
+    user => $::drush::user,
     creates => "${destination}/${module}",
-    notify => Exec["${bin} initial run"],
-    require => File["${bin_path}/${bin}"],
+    require => Exec["drush::bin ${bin} initial run"],
   }
 
 }
