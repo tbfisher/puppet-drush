@@ -13,7 +13,7 @@ define drush::bin (
   $default = false,
 ) {
 
-  include drush
+  require drush
 
   $src_path = "${::drush::src_path}/${title}"
 
